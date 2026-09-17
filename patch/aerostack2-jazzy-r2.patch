@@ -164,13 +164,15 @@ index 65a1142a2acc4ccc4fa08a24fea6442c69c0a136..ba6da47c53f913cd0298276bbe2881c8
 +Upstream maintainers decide how contributions are merged and credited there.
 diff --git a/README.ja.md b/README.ja.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..a0b3e86e2a6c3150f1c8411e97e3f13efa88b360
+index 0000000000000000000000000000000000000000..ad66a0adcf534f19e7540aa8ba2fc2bbd5eedf0b
 --- /dev/null
 +++ b/README.ja.md
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,131 @@
 +[English](README.md) | **日本語**
 +
 +[![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
++
++この fork の CI（`main`）: [![jazzy](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml) [![pixi](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml)
 +
 +# Aerostack2 — aerostack2-jazzy fork
 +
@@ -216,8 +218,12 @@ index 0000000000000000000000000000000000000000..a0b3e86e2a6c3150f1c8411e97e3f13e
 +Humble も `pixi run -e humble ...` や Humble 用 Docker タスクで利用できます。
 +
 +この fork は上流 Aerostack2 プロジェクトとは独立して管理しています。
-+冒頭のビルド・カバレッジバッジは上流の結果を示します。
-+この fork 固有の結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
++冒頭の ROS パッケージビルド・Humble・カバレッジのバッジは上流の結果を示します。
++別行の「**この fork の CI**」バッジは、この fork の `main` のワークフロー実行結果を示します。
++`jazzy` は ROS/colcon によるビルドとテスト、`pixi` は複数プラットフォームでの
++Humble／Jazzy の Pixi 環境のビルドと、Linux x86_64 の Jazzy 回帰テストを実行します。
++各バッジは、対応するワークフローが成功したときに `passing` と表示されます。
++ローカルでの確認結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
 +
 +確認手順とプラットフォームごとの未完了項目は
 +[Jazzy のセットアップと回帰テスト](docs/jazzy/README.md) に記載しています。
@@ -294,15 +300,17 @@ index 0000000000000000000000000000000000000000..a0b3e86e2a6c3150f1c8411e97e3f13e
 +D. Perez-Saura, and P. Campoy, 2023, ["Aerostack2: A software framework for
 +developing multi-robot aerial systems"](https://arxiv.org/abs/2303.18237), ArXiv DOI 2303.18237.
 diff --git a/README.md b/README.md
-index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..10cc92413b67c9199d792b9f89b8fc4a98d914a2 100644
+index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..80ffce1b29cc1db0e0459319198e8b62800d8b8e 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,17 +1,93 @@
+@@ -1,17 +1,99 @@
 +**English** | [日本語](README.ja.md)
 +
  [![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
  
 -# Aerostack2
++Fork CI (`main`): [![jazzy](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml) [![pixi](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml)
++
 +# Aerostack2 — aerostack2-jazzy fork
  
  Aerostack2 is a ROS 2 framework developed to create autonomous multi-aerial-robots systems in an easy and powerful way.
@@ -349,8 +357,12 @@ index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..10cc92413b67c9199d792b9f89b8fc4a
 +Humble remains available with `pixi run -e humble ...` and the named Humble Docker tasks.
 +
 +This fork is maintained independently of the upstream Aerostack2 project.
-+The build and coverage badges above refer to upstream; fork-specific verification
-+is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
++The ROS package-build, Humble, and coverage badges above refer to upstream.
++The separate **Fork CI** badges show this fork's `main` workflow results:
++`jazzy` runs ROS/colcon builds and tests, while `pixi` builds the Humble and Jazzy
++Pixi environments across its platform matrix and runs the Linux x86_64 Jazzy
++regression tests. Each badge displays `passing` only when its workflow succeeds.
++Local verification is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
 +
 +See [Jazzy setup and regression tests](docs/jazzy/README.md) for the verification
 +procedure and remaining platform-specific work. This default selection is not a
@@ -394,7 +406,7 @@ index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..10cc92413b67c9199d792b9f89b8fc4a
  - Natively developed on ROS 2.
  - Complete modularity, allowing elements to be changed or interchanged without affecting the rest of the system.
  - Independence of the aerial platform. Easy Sim2Real deployment.
-@@ -30,6 +106,20 @@ https://user-images.githubusercontent.com/35956525/231999883-e491aa08-2835-47a9-
+@@ -30,6 +112,20 @@ https://user-images.githubusercontent.com/35956525/231999883-e491aa08-2835-47a9-
  
  # Credits
  

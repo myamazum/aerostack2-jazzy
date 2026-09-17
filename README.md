@@ -2,6 +2,8 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
 
+Fork CI (`main`): [![jazzy](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml) [![pixi](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml)
+
 # Aerostack2 — aerostack2-jazzy fork
 
 Aerostack2 is a ROS 2 framework developed to create autonomous multi-aerial-robots systems in an easy and powerful way.
@@ -47,8 +49,12 @@ target Ubuntu 24.04, while this fork obtains Jazzy from RoboStack inside Pixi.
 Humble remains available with `pixi run -e humble ...` and the named Humble Docker tasks.
 
 This fork is maintained independently of the upstream Aerostack2 project.
-The build and coverage badges above refer to upstream; fork-specific verification
-is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
+The ROS package-build, Humble, and coverage badges above refer to upstream.
+The separate **Fork CI** badges show this fork's `main` workflow results:
+`jazzy` runs ROS/colcon builds and tests, while `pixi` builds the Humble and Jazzy
+Pixi environments across its platform matrix and runs the Linux x86_64 Jazzy
+regression tests. Each badge displays `passing` only when its workflow succeeds.
+Local verification is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
 
 See [Jazzy setup and regression tests](docs/jazzy/README.md) for the verification
 procedure and remaining platform-specific work. This default selection is not a

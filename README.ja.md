@@ -2,6 +2,8 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
 
+この fork の CI（`main`）: [![jazzy](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/build-jazzy.yaml) [![pixi](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml/badge.svg?branch=main)](https://github.com/myamazum/aerostack2-jazzy/actions/workflows/pixi-build.yaml)
+
 # Aerostack2 — aerostack2-jazzy fork
 
 Aerostack2 は、複数の飛行ロボットによる自律システムの開発を容易にする ROS 2 フレームワークです。
@@ -46,8 +48,12 @@ Ubuntu 24.04 を使います。Docker 経路は今回のローカル検証では
 Humble も `pixi run -e humble ...` や Humble 用 Docker タスクで利用できます。
 
 この fork は上流 Aerostack2 プロジェクトとは独立して管理しています。
-冒頭のビルド・カバレッジバッジは上流の結果を示します。
-この fork 固有の結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
+冒頭の ROS パッケージビルド・Humble・カバレッジのバッジは上流の結果を示します。
+別行の「**この fork の CI**」バッジは、この fork の `main` のワークフロー実行結果を示します。
+`jazzy` は ROS/colcon によるビルドとテスト、`pixi` は複数プラットフォームでの
+Humble／Jazzy の Pixi 環境のビルドと、Linux x86_64 の Jazzy 回帰テストを実行します。
+各バッジは、対応するワークフローが成功したときに `passing` と表示されます。
+ローカルでの確認結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
 
 確認手順とプラットフォームごとの未完了項目は
 [Jazzy のセットアップと回帰テスト](docs/jazzy/README.md) に記載しています。
