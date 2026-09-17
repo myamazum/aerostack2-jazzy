@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# First build docker/jazzy/Dockerfile from the patched checkout.
+ARG BASE_IMAGE=as2-jazzy-under-test:local
+FROM ${BASE_IMAGE}
+USER root
+RUN apt-get update && apt-get install --no-install-recommends -y \
+      python3-pytest python3-pytest-timeout \
+      ros-jazzy-rosgraph-msgs \
+      ros-jazzy-rmw-fastrtps-cpp ros-jazzy-rmw-cyclonedds-cpp \
+    && rm -rf /var/lib/apt/lists/*

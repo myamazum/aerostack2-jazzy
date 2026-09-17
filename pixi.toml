@@ -1,4 +1,5 @@
 [workspace]
+requires-pixi = ">=0.81.0"
 preview = ["pixi-build"]
 authors = ["Alvaro Gaona <alvgaona@gmail.com>"]
 channels = ["conda-forge"]
@@ -24,12 +25,13 @@ clean = "rm -rf build/ install/ log/"
 test-pkg = "sh -c 'colcon test --packages-up-to \"$0\" --event-handlers console_direct+'"
 test-result = "colcon test-result --verbose"
 # Docker compose wrappers (see docker/compose.yaml)
-"docker:build" = "docker compose -f docker/compose.yaml build"
+"docker:build" = "docker compose -f docker/compose.yaml build jazzy"
 "docker:build-humble" = "docker compose -f docker/compose.yaml build humble"
 "docker:build-nightly" = "docker compose -f docker/compose.yaml --profile nightly build nightly-humble"
 "docker:build-jazzy" = "docker compose -f docker/compose.yaml build jazzy"
-"docker:run" = "docker run -it --rm aerostack2/humble"
-"docker:pull" = "docker compose -f docker/compose.yaml --profile nightly pull humble nightly-humble"
+"docker:run" = "docker run -it --rm aerostack2/jazzy"
+"docker:run-humble" = "docker run -it --rm aerostack2/humble"
+"docker:pull-humble" = "docker compose -f docker/compose.yaml --profile nightly pull humble nightly-humble"
 "docker:clean" = "sh -c 'docker image rm -f aerostack2/humble aerostack2/nightly-humble aerostack2/jazzy || true'"
 
 [dependencies]
@@ -41,6 +43,11 @@ channels = ["robostack-jazzy"]
 [feature.jazzy.dependencies]
 ros-jazzy-ros2cli = ">=0.32.8,<0.33"
 ros-jazzy-ros2pkg = ">=0.32.8,<0.33"
+ros-jazzy-ros2run = ">=0.32.8,<0.33"
+ros-jazzy-ros2launch = "*"
+
+[feature.jazzy.tasks]
+jazzy-check = "python scripts/jazzy/check_environment.py"
 
 [feature.humble]
 channels = ["robostack-humble"]
@@ -55,7 +62,17 @@ ros2-distro-mutex = "0.9.*"
 ros-humble-ros-gz-sim = ">=0.244.24"
 libignition-math6 = { version = ">=6.16.0", build = "*_1" }
 
+# Optional test tools: production environments remain unchanged.
+[feature.jazzy-tests.dependencies]
+pytest = ">=8,<10"
+pytest-timeout = ">=2.3,<3"
+ros-jazzy-rosgraph-msgs = "*"
+
+[feature.jazzy-tests.tasks]
+jazzy-test = "bash scripts/jazzy/run_regression.sh"
+
 [environments]
 jazzy = ["jazzy"]
+jazzy-tests = ["jazzy", "jazzy-tests"]
 humble = ["humble"]
-default = ["humble"]
+default = ["jazzy"]

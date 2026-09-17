@@ -36,7 +36,7 @@ __copyright__ = 'Copyright (c) 2022 Universidad Politécnica de Madrid'
 __license__ = 'BSD-3-Clause'
 
 import abc
-from time import sleep
+from time import monotonic, sleep
 
 from action_msgs.msg import GoalStatus
 from as2_msgs.msg import BehaviorStatus
@@ -48,9 +48,14 @@ from std_srvs.srv import Trigger
 
 
 class BehaviorHandler(abc.ABC):
-    """Behavior handler."""
+    """Behavior handler with bounded protocol waits and server-liveness monitoring."""
 
-    TIMEOUT = 1  # seconds
+    TIMEOUT = 1.0  # endpoint availability timeout, seconds
+    GOAL_RESPONSE_TIMEOUT = 3.0  # send-goal acknowledgement timeout, seconds
+    SERVICE_RESPONSE_TIMEOUT = 3.0  # pause/resume/stop/modify response timeout, seconds
+    STATUS_LIVENESS_TIMEOUT = 3.0  # maximum time without status or feedback, seconds
+    RESULT_RESPONSE_TIMEOUT = 3.0  # result grace period after behavior becomes IDLE, seconds
+    POLL_PERIOD = 0.05  # future/liveness polling period, seconds
 
     class BehaviorNotAvailable(Exception):
         """Behavior not available exception."""
@@ -58,14 +63,29 @@ class BehaviorHandler(abc.ABC):
     class GoalRejected(Exception):
         """Goal rejected exception."""
 
+    class GoalResponseTimeout(TimeoutError):
+        """Action server did not acknowledge the goal in time."""
+
+    class ServiceResponseTimeout(TimeoutError):
+        """Behavior control service did not respond in time."""
+
+    class BehaviorCommunicationLost(TimeoutError):
+        """Behavior server stopped publishing status/feedback while a goal was active."""
+
+    class ResultResponseTimeout(TimeoutError):
+        """Behavior became idle but the action result did not arrive in time."""
+
     class ResultUnknown(Exception):
         """Result unknown exception."""
 
     def __init__(self, node: 'Node', action_msg, behavior_name) -> None:
         self._node = node
+        self.__behavior_name = behavior_name
         self.__status = BehaviorStatus.IDLE
         self.__feedback = None
         self.__result = None
+        self.__goal_handle = None
+        self.__last_server_activity = monotonic()
 
         self.__action_client = ActionClient(node, action_msg, behavior_name)
 
@@ -87,7 +107,8 @@ class BehaviorHandler(abc.ABC):
             QoSProfile(depth=1),
         )
 
-        # Wait for Action and Servers availability
+        # Keep the existing construction-time check, but every operation also
+        # re-checks its endpoint because connectivity may change afterwards.
         if (
             not self.__action_client.wait_for_server(timeout_sec=self.TIMEOUT)
             or not self.__pause_client.wait_for_service(timeout_sec=self.TIMEOUT)
@@ -102,6 +123,8 @@ class BehaviorHandler(abc.ABC):
         self._node.destroy_subscription(self.__status_sub)
         self._node.destroy_client(self.__resume_client)
         self._node.destroy_client(self.__pause_client)
+        self._node.destroy_client(self.__stop_client)
+        self._node.destroy_client(self.__modify_client)
         self.__action_client.destroy()
 
     @property
@@ -128,8 +151,11 @@ class BehaviorHandler(abc.ABC):
         """
         Behavior result status.
 
+        :raises self.ResultUnknown: on result not ready
         :return: rclpy.GoalStatus
         """
+        if self.__result is None:
+            raise self.ResultUnknown('Result not received yet')
         return self.__result.status
 
     @property
@@ -152,6 +178,46 @@ class BehaviorHandler(abc.ABC):
         """
         return self.__status == BehaviorStatus.RUNNING
 
+    @classmethod
+    def __wait_for_future(cls, future, timeout_sec: float) -> bool:
+        deadline = monotonic() + timeout_sec
+        while not future.done():
+            remaining = deadline - monotonic()
+            if remaining <= 0.0:
+                return False
+            sleep(min(cls.POLL_PERIOD, remaining))
+        return True
+
+    @staticmethod
+    def __discard_service_future(client, future) -> None:
+        client.remove_pending_request(future)
+        future.cancel()
+
+    def __ensure_action_available(self) -> None:
+        if not self.__action_client.wait_for_server(timeout_sec=self.TIMEOUT):
+            raise self.BehaviorNotAvailable(
+                f'{self.__behavior_name} action server not available'
+            )
+
+    def __call_service(self, client, request, operation: str):
+        if not client.wait_for_service(timeout_sec=self.TIMEOUT):
+            raise self.BehaviorNotAvailable(
+                f'{self.__behavior_name} {operation} service not available'
+            )
+
+        future = client.call_async(request)
+        if not self.__wait_for_future(future, self.SERVICE_RESPONSE_TIMEOUT):
+            self.__discard_service_future(client, future)
+            raise self.ServiceResponseTimeout(
+                f'{self.__behavior_name} {operation} response timed out after '
+                f'{self.SERVICE_RESPONSE_TIMEOUT:.1f} s'
+            )
+
+        exception = future.exception()
+        if exception is not None:
+            raise exception
+        return future.result()
+
     def start(self, goal_msg, wait_result: bool = True) -> bool:
         """
         Start behavior.
@@ -160,25 +226,38 @@ class BehaviorHandler(abc.ABC):
         :type goal_msg: Goal
         :param wait_result: wait to behavior end, defaults to True
         :type wait_result: bool, optional
+        :raises self.BehaviorNotAvailable: when the action server is unavailable
+        :raises self.GoalResponseTimeout: when goal acknowledgement times out
         :raises self.GoalRejected: on goal rejection
         :return: succeeded or not
         :rtype: bool
         """
-        # Sending goal
+        self.__ensure_action_available()
+
         send_goal_future = self.__action_client.send_goal_async(
             goal_msg, feedback_callback=self.__feedback_callback
         )
 
-        # Waiting to sending goal result
-        while not send_goal_future.done():
-            sleep(0.1)
+        if not self.__wait_for_future(send_goal_future, self.GOAL_RESPONSE_TIMEOUT):
+            # The goal request may have reached the server although its response was
+            # lost or delayed.  Do not cancel the local Future: keeping it alive lets
+            # us cancel a goal that is accepted after this method has already failed.
+            send_goal_future.add_done_callback(self.__cancel_late_goal)
+            raise self.GoalResponseTimeout(
+                f'{self.__behavior_name} goal response timed out after '
+                f'{self.GOAL_RESPONSE_TIMEOUT:.1f} s; goal state is being reconciled'
+            )
 
-        # Check if goal is accepted
+        exception = send_goal_future.exception()
+        if exception is not None:
+            raise exception
+
         self.__goal_handle = send_goal_future.result()
-        if not self.__goal_handle.accepted:
+        if self.__goal_handle is None or not self.__goal_handle.accepted:
             raise self.GoalRejected('Goal Rejected')
-        # Modify status
+
         self.__status = BehaviorStatus.RUNNING
+        self.__last_server_activity = monotonic()
 
         if wait_result:
             return self.wait_to_result()
@@ -190,12 +269,11 @@ class BehaviorHandler(abc.ABC):
         Modify current behavior.
 
         :param goal_msg: behavior goal
-        :type goal_msg
+        :type goal_msg: Goal
         """
         goal_req = self.__send_goal_msg_t.Request()
         goal_req.goal = goal_msg
-        response = self.__modify_client.call(goal_req)
-
+        response = self.__call_service(self.__modify_client, goal_req, 'modify')
         return response.accepted
 
     def pause(self) -> bool:
@@ -205,10 +283,9 @@ class BehaviorHandler(abc.ABC):
         :return: pause succeed or not
         :rtype: bool
         """
-        # TODO: extend to all behavior status
         if self.status != BehaviorStatus.RUNNING:
             return True
-        response = self.__pause_client.call(Trigger.Request())
+        response = self.__call_service(self.__pause_client, Trigger.Request(), 'pause')
         if response.success:
             self.__status = BehaviorStatus.PAUSED
         return response.success
@@ -222,13 +299,13 @@ class BehaviorHandler(abc.ABC):
         :return: resume succeed or not
         :rtype: bool
         """
-        # TODO: extend to all behavior status
         if self.status != BehaviorStatus.PAUSED:
             return True
-        response = self.__resume_client.call(Trigger.Request())
+        response = self.__call_service(self.__resume_client, Trigger.Request(), 'resume')
         if response.success:
             self.__status = BehaviorStatus.RUNNING
-        if wait_result:
+            self.__last_server_activity = monotonic()
+        if wait_result and response.success:
             return self.wait_to_result()
         return response.success
 
@@ -241,25 +318,58 @@ class BehaviorHandler(abc.ABC):
         """
         if self.status == BehaviorStatus.IDLE:
             return True
-        response = self.__stop_client.call(Trigger.Request())
+        response = self.__call_service(self.__stop_client, Trigger.Request(), 'stop')
         if response.success:
             self.__status = BehaviorStatus.IDLE
         return response.success
 
     def wait_to_result(self) -> bool:
         """
-        Wait to inner action to finish.
+        Wait for the current action result while monitoring BehaviorServer liveness.
 
-        :raises GoalFailed: When behavior result not succeeded
-        :return: succeeded or not
+        A long-running behavior is allowed to run indefinitely as long as status or
+        feedback continues to arrive.  This avoids imposing an arbitrary flight-duration
+        limit while still detecting a communication failure.
+
+        :raises self.ResultUnknown: if no accepted goal exists
+        :raises self.BehaviorCommunicationLost: if status/feedback stops arriving
+        :raises self.ResultResponseTimeout: if the behavior becomes IDLE without a result
+        :return: whether the action succeeded
         :rtype: bool
         """
-        # Getting result
-        result_future = self.__goal_handle.get_result_async()
-        while not result_future.done():
-            sleep(0.1)
+        if self.__goal_handle is None:
+            raise self.ResultUnknown('No accepted goal')
 
-        # Check action result
+        result_future = self.__goal_handle.get_result_async()
+        idle_since = None
+
+        while not result_future.done():
+            now = monotonic()
+
+            if now - self.__last_server_activity > self.STATUS_LIVENESS_TIMEOUT:
+                result_future.cancel()
+                raise self.BehaviorCommunicationLost(
+                    f'{self.__behavior_name} produced no status or feedback for '
+                    f'{self.STATUS_LIVENESS_TIMEOUT:.1f} s'
+                )
+
+            if self.__status == BehaviorStatus.IDLE:
+                if idle_since is None:
+                    idle_since = now
+                elif now - idle_since > self.RESULT_RESPONSE_TIMEOUT:
+                    result_future.cancel()
+                    raise self.ResultResponseTimeout(
+                        f'{self.__behavior_name} became IDLE but no action result arrived '
+                        f'within {self.RESULT_RESPONSE_TIMEOUT:.1f} s'
+                    )
+            else:
+                idle_since = None
+
+            sleep(self.POLL_PERIOD)
+
+        exception = result_future.exception()
+        if exception is not None:
+            raise exception
         self.__result = result_future.result()
 
         if self.result_status != GoalStatus.STATUS_SUCCEEDED:
@@ -268,11 +378,41 @@ class BehaviorHandler(abc.ABC):
         self._node.get_logger().debug(f'Result: {self.result}')
         return True
 
+    def __cancel_late_goal(self, send_goal_future) -> None:
+        """Cancel a goal that was accepted after the local acknowledgement timeout."""
+        try:
+            exception = send_goal_future.exception()
+            if exception is not None:
+                self._node.get_logger().error(
+                    f'Late goal response failed for {self.__behavior_name}: {exception}'
+                )
+                return
+
+            goal_handle = send_goal_future.result()
+            if goal_handle is None or not goal_handle.accepted:
+                return
+
+            self._node.get_logger().warning(
+                f'{self.__behavior_name} accepted a goal after the response timeout; '
+                'requesting cancellation'
+            )
+            goal_handle.cancel_goal_async()
+
+            # Ask for the terminal result as well.  Besides observing the terminal
+            # state, this allows rclpy to retire action bookkeeping and feedback state.
+            goal_handle.get_result_async()
+        except Exception as exception:  # best-effort reconciliation path
+            self._node.get_logger().error(
+                f'Could not reconcile late goal for {self.__behavior_name}: {exception}'
+            )
+
     def __feedback_callback(self, feedback_msg) -> None:
         """Feedback callback."""
         self.__feedback = feedback_msg.feedback
+        self.__last_server_activity = monotonic()
         self._node.get_logger().debug(f'Received feedback: {feedback_msg.feedback}')
 
     def __status_callback(self, status_msg: BehaviorStatus) -> None:
         """Behavior status callback."""
         self.__status = status_msg.status
+        self.__last_server_activity = monotonic()

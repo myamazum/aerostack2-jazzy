@@ -33,6 +33,7 @@ __authors__ = 'Miguel Fernández Cortizas, Pedro Arias Pérez, David Pérez Saur
 __copyright__ = 'Copyright (c) 2022 Universidad Politécnica de Madrid'
 __license__ = 'BSD-3-Clause'
 
+from time import monotonic, sleep
 import typing
 
 from rclpy.client import Client
@@ -43,26 +44,71 @@ if typing.TYPE_CHECKING:
 
 
 class ServiceHandler:
-    """Service handler class."""
+    """Service handler class with bounded availability and response waits."""
 
-    TIMEOUT = 3  # seconds
+    TIMEOUT = 3.0  # seconds
+    POLL_PERIOD = 0.01  # seconds
+
+    class ServiceNotAvailable(RuntimeError):
+        """Service did not become available before the availability timeout."""
+
+    class ServiceCallTimeout(TimeoutError):
+        """Service request did not receive a response before the response timeout."""
 
     def __init__(self, service_client: Client, logger) -> None:
         self._service_client = service_client
+        self._logger = logger
 
-        # Wait for Action availability
         if not service_client.wait_for_service(timeout_sec=self.TIMEOUT):
-            logger.error(f'{service_client.srv_name} not available')
+            message = f'{service_client.srv_name} not available after {self.TIMEOUT:.1f} s'
+            logger.error(message)
+            raise self.ServiceNotAvailable(message)
+
+    @classmethod
+    def _wait_for_future(cls, future, timeout_sec: float) -> bool:
+        """Wait for a future without depending on a ROS-distribution-specific Client.call API."""
+        deadline = monotonic() + timeout_sec
+        while not future.done():
+            remaining = deadline - monotonic()
+            if remaining <= 0.0:
+                return False
+            sleep(min(cls.POLL_PERIOD, remaining))
+        return True
 
     def __call__(self, request_msg):
-        """Call the service."""
-        return self._service_client.call(request_msg)
+        """Call the service and fail explicitly on availability or response timeout."""
+        if not self._service_client.service_is_ready():
+            if not self._service_client.wait_for_service(timeout_sec=self.TIMEOUT):
+                message = (
+                    f'{self._service_client.srv_name} not available after '
+                    f'{self.TIMEOUT:.1f} s'
+                )
+                self._logger.error(message)
+                raise self.ServiceNotAvailable(message)
+
+        future = self._service_client.call_async(request_msg)
+        if not self._wait_for_future(future, self.TIMEOUT):
+            # remove_pending_request() exists in both Humble and Jazzy.  Explicitly
+            # removing the request prevents a permanently pending client entry.
+            self._service_client.remove_pending_request(future)
+            future.cancel()
+            message = (
+                f'{self._service_client.srv_name} response timed out after '
+                f'{self.TIMEOUT:.1f} s'
+            )
+            self._logger.error(message)
+            raise self.ServiceCallTimeout(message)
+
+        exception = future.exception()
+        if exception is not None:
+            raise exception
+        return future.result()
 
 
 class ServiceBoolHandler(ServiceHandler):
     """Service SetBool handler class."""
 
-    TIMEOUT = 3  # seconds
+    TIMEOUT = 3.0  # seconds
 
     def __init__(self, drone: 'DroneInterfaceBase', service_name: str) -> None:
         self._logger = drone.get_logger()
@@ -70,7 +116,7 @@ class ServiceBoolHandler(ServiceHandler):
             self._service_client = drone.create_client(
                 SetBool, service_name)
         except Exception as ex:
-            self._logger.error(f'Coud not create client for {service_name}')
+            self._logger.error(f'Could not create client for {service_name}')
             raise ex
 
         return super().__init__(self._service_client, self._logger)

@@ -9,6 +9,7 @@ backend = { name = "pixi-build-ros", version = "0.7.*" }
 extra-package-mappings = [{
   as2_core = { conda = [] },
   as2_msgs = { conda = [] },
+  "python3-scipy" = { conda = ["scipy"] },
 }]
 
 [package.host-dependencies]

@@ -1,6 +1,8 @@
 # ROS 2 Jazzy + Gazebo Harmonic. Build context is the repository root.
 FROM osrf/ros:jazzy-desktop
 
+ARG BUILD_TESTING=ON
+
 ENV ROS_DISTRO=jazzy
 ENV AEROSTACK2_WORKSPACE=/root/aerostack2_ws
 ENV AEROSTACK2_PATH=/root/aerostack2_ws/src/aerostack2
@@ -21,10 +23,11 @@ WORKDIR ${AEROSTACK2_WORKSPACE}
 COPY . ./src/aerostack2
 RUN apt-get update && \
     rosdep update --rosdistro jazzy && \
-    rosdep install --from-paths src --ignore-src -r -y && \
+    rosdep install --from-paths src --ignore-src --rosdistro jazzy -y && \
     rm -rf /var/lib/apt/lists/*
 RUN . /opt/ros/$ROS_DISTRO/setup.sh \
-    && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+    && colcon build --symlink-install --cmake-args \
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=${BUILD_TESTING}
 
 RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> ~/.bashrc
 RUN echo "export AEROSTACK2_PATH=$AEROSTACK2_PATH" >> ~/.bashrc

@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: BSD-3-Clause
+name: Jazzy regression (local defaults patch)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jazzy-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        rmw: [rmw_fastrtps_cpp, rmw_cyclonedds_cpp]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build this checkout with testing enabled
+        run: |
+          docker build --build-arg BUILD_TESTING=ON \
+            -f docker/jazzy/Dockerfile -t as2-jazzy-under-test:local .
+          docker build -f docker/jazzy/Dockerfile.regression \
+            -t as2-jazzy-regression:local .
+      - name: Run upstream tests and isolated AS2 protocol regressions
+        env:
+          RMW: ${{ matrix.rmw }}
+        run: |
+          mkdir -p test-results
+          docker run --init --rm \
+            -e RMW_IMPLEMENTATION="$RMW" \
+            -e AS2_TEST_DOMAIN_ID=71 \
+            -e AS2_TEST_RESULTS_DIR=/test-results \
+            -v "$PWD/test-results:/test-results" \
+            --entrypoint /bin/bash as2-jazzy-regression:local \
+            -c 'bash "$AEROSTACK2_PATH/scripts/jazzy/run_ci.sh"'
+      - name: Preserve test reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jazzy-${{ matrix.rmw }}-test-results
+          path: test-results/
+          if-no-files-found: warn

@@ -78,6 +78,7 @@ thirdparties/
 .pixi/
 pixi.lock
 **/pixi.lock
+!/pixi.lock
 
 # Editor
 .zed/
@@ -85,3 +86,4 @@ pixi.lock
 # Misc
 files.txt
 **/files.txt
+test-results/

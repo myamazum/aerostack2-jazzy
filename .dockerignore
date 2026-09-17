@@ -20,3 +20,6 @@ pixi-environments/
 # OS / misc
 .DS_Store
 *.bag
+
+# Local regression artifacts are not build inputs.
+test-results/
