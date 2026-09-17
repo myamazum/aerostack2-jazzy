@@ -4,6 +4,7 @@
 
 文書更新: 2026-09-18（forkの目的・帰属・パッチ適用手順を追記し、READMEの日本語版と
 言語切り替えリンクを追加。ライセンス保持と追加部分のライセンス表記を確認し、
+CIバッジ、Docker公開ジョブのfork条件、Docker用ActionsのNode.js 24対応を追記。
 統合パッチを再生成して適用を確認）
 
 ## 対象
@@ -60,6 +61,26 @@ Pixi 0.81.0は読み込めます。
 | dynamic_trajectory_generator | `420700f2bc7ff14fdce1b13bf367baa23ad5adf7` |
 | gcopter_trajectory_generator_lib | `4a1b4c080a4500fb4b5f13f2fbfc44fe391d42d4` |
 | mav_trajectory_generation_lib | `65df05b537fdcb0b2a361b583bd37ae156578341` |
+
+## GitHub Actionsのfork対応（2026-09-18）
+
+forkへのpush後、上流から引き継いだ`docker-nightly`のDocker Hubログインが
+`Username and password required`で失敗したとの報告を受け、公開ジョブの条件を修正しました。
+
+- `docker-nightly`と`docker-release`の公開ジョブは、
+  `github.repository == 'aerostack2/aerostack2'`の場合だけ実行します。
+  `myamazum/aerostack2-jazzy`と他のforkではスキップします。
+- Docker用ワークフロー3件のActionsをNode.js 24対応版へ更新しました。
+  `checkout@v6`、`login-action@v4`、`setup-buildx-action@v4`、
+  `setup-qemu-action@v4`、`build-push-action@v7`を各利用箇所に適用しています。
+- 変更したDocker用ワークフロー3件は`actionlint 1.7.12`で合格し、
+  全8件のワークフローはYAML解析に成功しました。
+- 公開ジョブの条件を上流・このfork・別のforkについて確認しました。
+  ビルド・テスト用ワークフローにDocker Hub公開用ログインや認証情報の参照がないことも確認しました。
+
+この修正ではGitHub上のワークフローやDockerビルドは再実行していません。
+公開ジョブのスキップはJazzy/Pixiのビルド・テスト成功を意味しません。
+各バッジは、それぞれのワークフローの実行結果で判断してください。
 
 ## ライセンス・帰属表記の確認
 

@@ -55,6 +55,11 @@ Humble／Jazzy の Pixi 環境のビルドと、Linux x86_64 の Jazzy 回帰テ
 各バッジは、対応するワークフローが成功したときに `passing` と表示されます。
 ローカルでの確認結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
 
+上流から引き継いだ `docker-nightly` と `docker-release` の公開用ジョブは、
+上流の `aerostack2/aerostack2` だけで実行し、この fork ではスキップします。
+Jazzy と Pixi の検証に Docker Hub の公開用認証情報は不要です。
+`docker-build` は pull request または手動実行で、公開せずにイメージをビルド検証します。
+
 確認手順とプラットフォームごとの未完了項目は
 [Jazzy のセットアップと回帰テスト](docs/jazzy/README.md) に記載しています。
 この fork で Jazzy を既定化したことは、飛行試験の完了や公式 Jazzy リリースを意味しません。

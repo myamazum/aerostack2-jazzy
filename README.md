@@ -56,6 +56,11 @@ Pixi environments across its platform matrix and runs the Linux x86_64 Jazzy
 regression tests. Each badge displays `passing` only when its workflow succeeds.
 Local verification is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
 
+The inherited `docker-nightly` and `docker-release` publishing jobs run only in
+the upstream `aerostack2/aerostack2` repository and are skipped in this fork.
+The Jazzy and Pixi checks do not require Docker Hub publishing credentials.
+`docker-build` validates images on pull requests or manual runs without publishing.
+
 See [Jazzy setup and regression tests](docs/jazzy/README.md) for the verification
 procedure and remaining platform-specific work. This default selection is not a
 claim of completed flight validation or official Jazzy release status.

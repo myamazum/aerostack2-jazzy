@@ -9,6 +9,93 @@ index 61d72fd191c05c6fb28f92190c5270ba4681b98b..efb9cc416e212fe64f3f9130f93a7b0f
 +
 +# Local regression artifacts are not build inputs.
 +test-results/
+diff --git a/.github/workflows/docker-build.yaml b/.github/workflows/docker-build.yaml
+index 6afc7b69e01afb25e135c7efb1fd6fdbfdff3c09..0a53f57c449a8384e65b64a9d51c43db886619b7 100644
+--- a/.github/workflows/docker-build.yaml
++++ b/.github/workflows/docker-build.yaml
+@@ -29,13 +29,13 @@ jobs:
+             image: aerostack2/jazzy
+     steps:
+       - name: Checkout
+-        uses: actions/checkout@v4
++        uses: actions/checkout@v6
+       - name: Set up Docker Buildx
+-        uses: docker/setup-buildx-action@v3
++        uses: docker/setup-buildx-action@v4
+       - name: Validate compose file
+         run: docker compose -f docker/compose.yaml config -q
+       - name: Build ${{ matrix.distro }} image
+-        uses: docker/build-push-action@v5
++        uses: docker/build-push-action@v7
+         with:
+           context: .
+           file: ${{ matrix.dockerfile }}
+diff --git a/.github/workflows/docker-nightly.yaml b/.github/workflows/docker-nightly.yaml
+index d215484b786f566e7012d4fdb67cbf85ad575c81..0114c1871ce4f92226cb98f5342127a0533f712d 100644
+--- a/.github/workflows/docker-nightly.yaml
++++ b/.github/workflows/docker-nightly.yaml
+@@ -7,21 +7,23 @@ on:
+ 
+ jobs:
+   docker:
++    # These credentials and image names belong to the upstream publisher.
++    if: ${{ github.repository == 'aerostack2/aerostack2' }}
+     runs-on: ubuntu-latest
+     steps:
+       - name: Checkout
+-        uses: actions/checkout@v4
++        uses: actions/checkout@v6
+       - name: Set up QEMU
+-        uses: docker/setup-qemu-action@v3
++        uses: docker/setup-qemu-action@v4
+       - name: Set up Docker Buildx
+-        uses: docker/setup-buildx-action@v3
++        uses: docker/setup-buildx-action@v4
+       - name: Login to Docker Hub
+-        uses: docker/login-action@v3
++        uses: docker/login-action@v4
+         with:
+           username: ${{ secrets.DOCKERHUB_USERNAME }}
+           password: ${{ secrets.DOCKERHUB_TOKEN }}
+       - name: Build and push
+-        uses: docker/build-push-action@v5
++        uses: docker/build-push-action@v7
+         with:
+           context: .
+           file: docker/humble/Dockerfile
+diff --git a/.github/workflows/docker-release.yaml b/.github/workflows/docker-release.yaml
+index 63ae7c8bc59e5140720c4f401278c46f5b27df9b..3f2af155d129e071d2e0686c49874ba73730c4de 100644
+--- a/.github/workflows/docker-release.yaml
++++ b/.github/workflows/docker-release.yaml
+@@ -6,21 +6,23 @@ on:
+ 
+ jobs:
+   docker:
++    # These credentials and image names belong to the upstream publisher.
++    if: ${{ github.repository == 'aerostack2/aerostack2' }}
+     runs-on: ubuntu-latest
+     steps:
+       - name: Checkout
+-        uses: actions/checkout@v4
++        uses: actions/checkout@v6
+       - name: Set up QEMU
+-        uses: docker/setup-qemu-action@v3
++        uses: docker/setup-qemu-action@v4
+       - name: Set up Docker Buildx
+-        uses: docker/setup-buildx-action@v3
++        uses: docker/setup-buildx-action@v4
+       - name: Login to Docker Hub
+-        uses: docker/login-action@v3
++        uses: docker/login-action@v4
+         with:
+           username: ${{ secrets.DOCKERHUB_USERNAME }}
+           password: ${{ secrets.DOCKERHUB_TOKEN }}
+       - name: Build and push
+-        uses: docker/build-push-action@v5
++        uses: docker/build-push-action@v7
+         with:
+           context: .
+           file: docker/humble/Dockerfile
 diff --git a/.github/workflows/jazzy-regression.yaml b/.github/workflows/jazzy-regression.yaml
 new file mode 100644
 index 0000000000000000000000000000000000000000..ba1f77ceab69d2858ad2ae25982c6078bca80dcc
@@ -164,10 +251,10 @@ index 65a1142a2acc4ccc4fa08a24fea6442c69c0a136..ba6da47c53f913cd0298276bbe2881c8
 +Upstream maintainers decide how contributions are merged and credited there.
 diff --git a/README.ja.md b/README.ja.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..ad66a0adcf534f19e7540aa8ba2fc2bbd5eedf0b
+index 0000000000000000000000000000000000000000..1202e60f6a474463f5f228f1945f0f3d7082c942
 --- /dev/null
 +++ b/README.ja.md
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,136 @@
 +[English](README.md) | **日本語**
 +
 +[![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
@@ -224,6 +311,11 @@ index 0000000000000000000000000000000000000000..ad66a0adcf534f19e7540aa8ba2fc2bb
 +Humble／Jazzy の Pixi 環境のビルドと、Linux x86_64 の Jazzy 回帰テストを実行します。
 +各バッジは、対応するワークフローが成功したときに `passing` と表示されます。
 +ローカルでの確認結果は [検証記録](docs/jazzy/VERIFICATION.md) を参照してください。
++
++上流から引き継いだ `docker-nightly` と `docker-release` の公開用ジョブは、
++上流の `aerostack2/aerostack2` だけで実行し、この fork ではスキップします。
++Jazzy と Pixi の検証に Docker Hub の公開用認証情報は不要です。
++`docker-build` は pull request または手動実行で、公開せずにイメージをビルド検証します。
 +
 +確認手順とプラットフォームごとの未完了項目は
 +[Jazzy のセットアップと回帰テスト](docs/jazzy/README.md) に記載しています。
@@ -300,10 +392,10 @@ index 0000000000000000000000000000000000000000..ad66a0adcf534f19e7540aa8ba2fc2bb
 +D. Perez-Saura, and P. Campoy, 2023, ["Aerostack2: A software framework for
 +developing multi-robot aerial systems"](https://arxiv.org/abs/2303.18237), ArXiv DOI 2303.18237.
 diff --git a/README.md b/README.md
-index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..80ffce1b29cc1db0e0459319198e8b62800d8b8e 100644
+index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..fd6a5ef43c4a675ea5ee7994d6d18e7b1a02a9a9 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,17 +1,99 @@
+@@ -1,17 +1,104 @@
 +**English** | [日本語](README.ja.md)
 +
  [![arXiv](https://img.shields.io/badge/arXiv-2303.18237-b31b1b.svg)](https://arxiv.org/abs/2303.18237) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status ROS2 Package](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__aerostack2__ubuntu_jammy_amd64__binary/) [![codecov_test](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/codecov_test.yaml) [![humble](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml/badge.svg)](https://github.com/aerostack2/aerostack2/actions/workflows/build-humble.yaml) [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
@@ -364,6 +456,11 @@ index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..80ffce1b29cc1db0e0459319198e8b62
 +regression tests. Each badge displays `passing` only when its workflow succeeds.
 +Local verification is recorded in [the verification notes](docs/jazzy/VERIFICATION.md).
 +
++The inherited `docker-nightly` and `docker-release` publishing jobs run only in
++the upstream `aerostack2/aerostack2` repository and are skipped in this fork.
++The Jazzy and Pixi checks do not require Docker Hub publishing credentials.
++`docker-build` validates images on pull requests or manual runs without publishing.
++
 +See [Jazzy setup and regression tests](docs/jazzy/README.md) for the verification
 +procedure and remaining platform-specific work. This default selection is not a
 +claim of completed flight validation or official Jazzy release status.
@@ -406,7 +503,7 @@ index 9b5b813f18b3dc71a9c3064369e3b8e5e3a52aa9..80ffce1b29cc1db0e0459319198e8b62
  - Natively developed on ROS 2.
  - Complete modularity, allowing elements to be changed or interchanged without affecting the rest of the system.
  - Independence of the aerial platform. Easy Sim2Real deployment.
-@@ -30,6 +112,20 @@ https://user-images.githubusercontent.com/35956525/231999883-e491aa08-2835-47a9-
+@@ -30,6 +117,20 @@ https://user-images.githubusercontent.com/35956525/231999883-e491aa08-2835-47a9-
  
  # Credits
  
@@ -1397,16 +1494,17 @@ index 0000000000000000000000000000000000000000..a62bc370428a9c9fa23d5e5cc614c8b6
 +- https://github.com/aerostack2/aerostack2/blob/19c397309c6a41b279e6b551818ec12605cfcecc/as2_python_api/as2_python_api/behavior_actions/behavior_handler.py
 diff --git a/docs/jazzy/VERIFICATION.md b/docs/jazzy/VERIFICATION.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..a9c97704aa687d90ffe9b3852881e176eba00f00
+index 0000000000000000000000000000000000000000..be10fb2e1e7e13ce9485877e7ebf701f77791f92
 --- /dev/null
 +++ b/docs/jazzy/VERIFICATION.md
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,125 @@
 +# Pixi / Jazzy 検証記録
 +
 +実施日: 2026-09-17
 +
 +文書更新: 2026-09-18（forkの目的・帰属・パッチ適用手順を追記し、READMEの日本語版と
 +言語切り替えリンクを追加。ライセンス保持と追加部分のライセンス表記を確認し、
++CIバッジ、Docker公開ジョブのfork条件、Docker用ActionsのNode.js 24対応を追記。
 +統合パッチを再生成して適用を確認）
 +
 +## 対象
@@ -1463,6 +1561,26 @@ index 0000000000000000000000000000000000000000..a9c97704aa687d90ffe9b3852881e176
 +| dynamic_trajectory_generator | `420700f2bc7ff14fdce1b13bf367baa23ad5adf7` |
 +| gcopter_trajectory_generator_lib | `4a1b4c080a4500fb4b5f13f2fbfc44fe391d42d4` |
 +| mav_trajectory_generation_lib | `65df05b537fdcb0b2a361b583bd37ae156578341` |
++
++## GitHub Actionsのfork対応（2026-09-18）
++
++forkへのpush後、上流から引き継いだ`docker-nightly`のDocker Hubログインが
++`Username and password required`で失敗したとの報告を受け、公開ジョブの条件を修正しました。
++
++- `docker-nightly`と`docker-release`の公開ジョブは、
++  `github.repository == 'aerostack2/aerostack2'`の場合だけ実行します。
++  `myamazum/aerostack2-jazzy`と他のforkではスキップします。
++- Docker用ワークフロー3件のActionsをNode.js 24対応版へ更新しました。
++  `checkout@v6`、`login-action@v4`、`setup-buildx-action@v4`、
++  `setup-qemu-action@v4`、`build-push-action@v7`を各利用箇所に適用しています。
++- 変更したDocker用ワークフロー3件は`actionlint 1.7.12`で合格し、
++  全8件のワークフローはYAML解析に成功しました。
++- 公開ジョブの条件を上流・このfork・別のforkについて確認しました。
++  ビルド・テスト用ワークフローにDocker Hub公開用ログインや認証情報の参照がないことも確認しました。
++
++この修正ではGitHub上のワークフローやDockerビルドは再実行していません。
++公開ジョブのスキップはJazzy/Pixiのビルド・テスト成功を意味しません。
++各バッジは、それぞれのワークフローの実行結果で判断してください。
 +
 +## ライセンス・帰属表記の確認
 +
