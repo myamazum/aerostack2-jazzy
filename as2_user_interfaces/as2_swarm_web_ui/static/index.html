@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aerostack2 Fleet Control</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#10141b;color:#eef2f7}header,main{padding:16px 20px}
+header{border-bottom:1px solid #344154}h1{font-size:1.25rem;margin:0}.muted{color:#9ba8b8}
+.warning,.panel{border:1px solid #344154;border-radius:8px;padding:12px;margin-bottom:12px;background:#171d27}
+.warning{border-color:#ffd166}.summary,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.metric{padding:8px 12px;border:1px solid #344154;border-radius:7px}.metric strong{display:block;font-size:1.15rem}
+button,input{font:inherit}button{padding:7px 10px;background:#29364a;color:#eef2f7;border:1px solid #344154;border-radius:6px}
+button:disabled{opacity:.45}.danger{background:#4a2323}label{display:grid;gap:3px;font-size:.75rem;color:#9ba8b8}
+input[type=number]{width:85px;padding:6px;background:#202938;color:#eef2f7;border:1px solid #344154;border-radius:5px}
+table{border-collapse:collapse;width:100%;min-width:800px}th,td{padding:7px;border-bottom:1px solid #344154;text-align:left;font-size:.82rem}
+.table{overflow:auto}.stale{opacity:.55}#log{white-space:pre-wrap;font-family:monospace;background:#0b0f14;padding:8px;max-height:220px;overflow:auto}
+</style>
+</head>
+<body>
+<header><h1>Aerostack2 Fleet Control</h1><div id="mode" class="muted">Loading…</div></header>
+<main>
+<div class="warning">Group commands are concurrent ROS 2 commands to multiple Aerostack2 namespaces.
+They are <strong>not</strong> Crazyradio broadcast commands and do not provide hard synchronization.
+Validate in simulation before real-aircraft use.</div>
+
+<div class="summary">
+<div class="metric"><strong id="count">0</strong><span>aircraft</span></div>
+<div class="metric"><strong id="connected">0</strong><span>connected</span></div>
+<div class="metric"><strong id="armed">0</strong><span>armed</span></div>
+<div class="metric"><strong id="selected">0</strong><span>selected</span></div>
+<div class="metric"><strong id="stale">0</strong><span>stale</span></div>
+</div>
+
+<section class="panel"><h3>Selection</h3><div class="row">
+<button id="all">Select all</button><button id="none">Clear</button><span id="groups"></span>
+</div></section>
+
+<section class="panel"><h3>Commands</h3>
+<div class="row">
+<button data-a="arm">Arm</button><button data-a="offboard">Offboard</button>
+<button data-a="manual">Manual</button><button data-a="disarm">Disarm</button>
+<button class="danger" data-a="emergency_hover">Emergency hover</button>
+<button class="danger" data-a="emergency_land">Emergency land</button>
+<button class="danger" id="kill">KILL SWITCH</button>
+</div><br>
+<div class="row">
+<label>Takeoff height [m]<input id="th" type="number" value="0.7" step="0.05"></label>
+<label>Speed [m/s]<input id="ts" type="number" value="0.3" step="0.05"></label>
+<button id="takeoff">Takeoff</button>
+<label>Land speed [m/s]<input id="ls" type="number" value="0.25" step="0.05"></label>
+<button id="land">Land</button>
+</div><br>
+<div class="row">
+<label>X [m]<input id="x" type="number" value="0" step="0.1"></label>
+<label>Y [m]<input id="y" type="number" value="0" step="0.1"></label>
+<label>Z [m]<input id="z" type="number" value="0.7" step="0.1"></label>
+<label>Speed [m/s]<input id="gs" type="number" value="0.3" step="0.05"></label>
+<button id="goto">Go to</button>
+</div></section>
+
+<section class="panel"><h3>Aircraft</h3><div class="table"><table>
+<thead><tr><th></th><th>Name</th><th>Link</th><th>State</th><th>Armed</th><th>Offboard</th><th>Position</th><th>Velocity</th><th>Age [s]</th></tr></thead>
+<tbody id="rows"></tbody></table></div></section>
+<section class="panel"><h3>Command log</h3><div id="log">UI started.</div></section>
+</main>
+<script>
+'use strict';
+const S=new Set();let C={drones:[],groups:{}};let busy=false;const $=id=>document.getElementById(id);
+const f=v=>(v||[0,0,0]).map(x=>Number(x).toFixed(2)).join(' / ');
+function log(s){$('log').textContent+='\n['+new Date().toLocaleTimeString()+'] '+s;$('log').scrollTop=$('log').scrollHeight}
+function buttons(){ $('selected').textContent=S.size; document.querySelectorAll('[data-a],#takeoff,#land,#goto,#kill').forEach(b=>b.disabled=busy||!S.size)}
+function select(a){S.clear();a.forEach(x=>S.add(x));document.querySelectorAll('[data-d]').forEach(b=>b.checked=S.has(b.dataset.d));buttons()}
+async function get(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw Error(r.status+' '+r.statusText);return r.json()}
+async function cfg(){C=await get('/api/config');$('mode').textContent=C.drones.length+' namespace(s) · '+C.command_mode+' · hard synchronization: no';
+const g=$('groups');g.textContent='';Object.entries(C.groups||{}).forEach(([n,m])=>{const b=document.createElement('button');b.textContent='Group: '+n;b.onclick=()=>select(m);g.appendChild(b)})}
+async function refresh(){try{const q=await get('/api/fleet');$('count').textContent=q.count;$('connected').textContent=q.drones.filter(d=>d.connected&&!d.stale).length;
+$('armed').textContent=q.drones.filter(d=>d.armed).length;$('stale').textContent=q.drones.filter(d=>d.stale).length;const t=$('rows');t.textContent='';
+q.drones.forEach(d=>{const r=document.createElement('tr');if(d.stale)r.className='stale';const c=document.createElement('td'),b=document.createElement('input');
+b.type='checkbox';b.dataset.d=d.name;b.checked=S.has(d.name);b.onchange=()=>{b.checked?S.add(d.name):S.delete(d.name);buttons()};c.appendChild(b);r.appendChild(c);
+[d.name,d.stale?'STALE':(d.connected?'connected':'not connected'),d.state_label,d.armed?'yes':'no',d.offboard?'yes':'no',f(d.position),f(d.velocity),d.age_s==null?'—':Number(d.age_s).toFixed(2)]
+.forEach(v=>{const x=document.createElement('td');x.textContent=v;r.appendChild(x)});t.appendChild(r)});buttons()}catch(e){log('status: '+e.message)}}
+async function send(action,params={},confirm){if(!S.size)return;busy=true;buttons();const body={action,targets:[...S],params};if(confirm)body.confirm=confirm;log(action+' -> '+body.targets.join(', '));
+try{const r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const q=await r.json();
+log(action+(r.ok?' ok; dispatch span '+q.dispatch_span_ms+' ms':' failed '+r.status+' '+JSON.stringify(q)))}catch(e){log(action+': '+e.message)}finally{busy=false;buttons();setTimeout(refresh,150)}}
+$('all').onclick=()=>select(C.drones);$('none').onclick=()=>select([]);document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>send(b.dataset.a));
+$('takeoff').onclick=()=>send('takeoff',{height:+$('th').value,speed:+$('ts').value});$('land').onclick=()=>send('land',{speed:+$('ls').value});
+$('goto').onclick=()=>send('go_to',{x:+$('x').value,y:+$('y').value,z:+$('z').value,speed:+$('gs').value});
+$('kill').onclick=()=>{if(confirm('KILL SWITCH selected aircraft?')&&confirm('Final confirmation: send KILL_SWITCH now?'))send('kill_switch',{},'KILL')};
+(async()=>{try{await cfg();await refresh();setInterval(refresh,500)}catch(e){log('init: '+e.message)}})();
+</script>
+</body></html>
