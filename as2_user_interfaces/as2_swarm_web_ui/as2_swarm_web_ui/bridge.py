@@ -338,6 +338,9 @@ class SwarmBridge(Node):
         results: dict[str, Any] = {}
         for name in names:
             if name in pending:
+                client = getattr(self._endpoints[name], endpoint_attr)
+                client.remove_pending_request(futures[name])
+                futures[name].cancel()
                 results[name] = {'ok': False, 'error': 'response timeout'}
                 continue
             future = futures[name]
@@ -383,10 +386,13 @@ class SwarmBridge(Node):
         results: dict[str, Any] = {}
         for name in names:
             if name in pending:
+                futures[name].add_done_callback(
+                    partial(self._cancel_late_goal, name=name, action=action)
+                )
                 results[name] = {
                     'ok': False,
                     'accepted': None,
-                    'error': 'goal acknowledgement timeout; terminal state is unknown',
+                    'error': 'goal acknowledgement timeout; late acceptance will be cancelled',
                 }
                 continue
             future = futures[name]
@@ -398,6 +404,28 @@ class SwarmBridge(Node):
             accepted = bool(goal_handle is not None and goal_handle.accepted)
             results[name] = {'ok': accepted, 'accepted': accepted}
         return self._batch_result(action, names, results, stamps)
+
+    def _cancel_late_goal(self, future: Any, *, name: str, action: str) -> None:
+        """Cancel a goal that is accepted after the UI acknowledgement timeout."""
+        try:
+            error = future.exception()
+            if error is not None:
+                self.get_logger().error(
+                    f'Late {action} goal response for {name} failed: {error}'
+                )
+                return
+            goal_handle = future.result()
+            if goal_handle is None or not goal_handle.accepted:
+                return
+            self.get_logger().warning(
+                f'{action} goal for {name} was accepted after the UI timeout; cancelling it'
+            )
+            goal_handle.cancel_goal_async()
+            goal_handle.get_result_async()
+        except Exception as error:
+            self.get_logger().error(
+                f'Could not reconcile late {action} goal for {name}: {error}'
+            )
 
     def _takeoff_batch(self, names: list[str], params: dict[str, Any]) -> dict[str, Any]:
         height = float(params.get('height', 1.0))
