@@ -1,0 +1,9 @@
+{
+  "drones": ["cf0", "cf1", "cf2", "cf3"],
+  "groups": {
+    "front": ["cf0", "cf1"],
+    "rear": ["cf2", "cf3"]
+  },
+  "earth_frame": "earth",
+  "stale_after_s": 2.0
+}
